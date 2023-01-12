@@ -1,10 +1,9 @@
-//import { Client, LocalAuth, MessageMedia } from "whatsapp-web.js"
 import pkg from "whatsapp-web.js";
 const { Client, LocalAuth, MessageMedia } = pkg;
 import qrcode from "qrcode-terminal";
-
 import ytdl from "ytdl-core";
 import fs from "file-system";
+
 const client = new Client({
     puppeteer: {
         executablePath:
@@ -24,7 +23,6 @@ client.on("ready", () => {
 client.on("message", (message) => {
     console.log(message.from, message.body);
 });
-// yt and reels
 
 client.on("message", (message) => {
     const msgSplit = message.body.split(" ");
@@ -35,29 +33,36 @@ client.on("message", (message) => {
         client.sendMessage(message.from, media);
         console.log("sent");
     }
+    // -yt allows users to download yt videos and shorts
     if (msgSplit.includes("-yt")) {
-        let ytVideoID;
+        let ytVideoLink;
+        // converts the shorts into a yt video format
         if (message.body.split("/").includes("shorts")) {
-            ytVideoID = `https://www.youtube.com/watch?v=${
-                message.body.split("/shorts/")[1]
+            ytVideoLink = `https://www.youtube.com/watch?v=${
+                // gets the video/short ID
+                message.body.split("/shorts/")[1].split("?feature=share")[0]
             }`;
-        } else ytVideoID = msgSplit[1]
-        console.log(ytVideoID)
-        let vidID = "./yt/" + String(new Date().getTime()) + ".mp4";
+        } else ytVideoLink = msgSplit[1]
+        
+        let vidPath = "./yt/" + String(new Date().getTime()) + ".mp4";
 
-        const video = ytdl(ytVideoID, { quality: 18 });
-
+        // downloading the video and saving it in ./yt/ temporarily 
+        const video = ytdl(ytVideoLink, { quality: 18 });
         video.on("progress", function (info) {
             //console.log("downloading..")
         });
         video.on("end", function (info) {
             message.reply("sending video...");
         });
-        video.pipe(fs.createWriteStream(vidID));
+        video.pipe(fs.createWriteStream(vidPath));
+
         setTimeout(function () {
-            const media = MessageMedia.fromFilePath(vidID);
+            // sending the video
+            const media = MessageMedia.fromFilePath(vidPath);
             client.sendMessage(message.from, media);
-            fs.unlinkSync(vidID)
+            
+            // deleting the video
+            fs.unlinkSync(vidPath)
         }, 10000);
     }
 });
